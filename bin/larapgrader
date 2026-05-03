@@ -1,0 +1,17 @@
+#!/usr/bin/env php
+<?php
+
+$autoloadPath = __DIR__ . '/../vendor/autoload.php';
+if (!file_exists($autoloadPath)) {
+    fwrite(STDERR, "Error: vendor/autoload.php not found. Run 'composer install' first.\n");
+    exit(1);
+}
+
+require_once $autoloadPath;
+
+use Symfony\Component\Console\Application;
+
+$application = new Application('larapgrader', '0.1.0');
+
+// Commands will be registered here in future stories
+$application->run();

@@ -1,0 +1,36 @@
+{
+    "name": "your-org/larapgrader",
+    "description": "Lumen to Laravel migration orchestrator",
+    "require": {
+        "php": "^8.3",
+        "php-di/php-di": "^7.1",
+        "symfony/console": "^7.4",
+        "symfony/process": "^7.4",
+        "symfony/yaml": "^7.4",
+        "nikic/php-parser": "^5.7",
+        "ext-pdo_sqlite": "*",
+        "amphp/parallel": "^2.0"
+    },
+    "require-dev": {
+        "pestphp/pest": "^2.36",
+        "mockery/mockery": "^1.6",
+        "phpstan/phpstan": "^2.1",
+        "friendsofphp/php-cs-fixer": "^3.57"
+    },
+    "autoload": {
+        "psr-4": {
+            "Larapgrader\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "bin": ["bin/larapgrader"],
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": false
+        }
+    }
+}

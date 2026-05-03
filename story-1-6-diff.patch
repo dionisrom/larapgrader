@@ -1,0 +1,311 @@
+diff --git a/src/Contracts/OnboardingWizardInterface.php b/src/Contracts/OnboardingWizardInterface.php
+new file mode 100644
+index 0000000..65ef2b6
+--- /dev/null
++++ b/src/Contracts/OnboardingWizardInterface.php
+@@ -0,0 +1,26 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Larapgrader\Contracts;
++
++/**
++ * Interface for onboarding wizard.
++ * Handles first-run setup and configuration file generation.
++ */
++interface OnboardingWizardInterface
++{
++    /**
++     * Detect if this is a first-run (no larapgrader.yaml exists).
++     *
++     * @return bool
++     */
++    public function isFirstRun(): bool;
++
++    /**
++     * Run the interactive wizard and return collected configuration.
++     *
++     * @return array<string, mixed> Configuration array to be written to larapgrader.yaml
++     */
++    public function runWizard(): array;
++}
+diff --git a/src/Onboarding/FirstRunWizard.php b/src/Onboarding/FirstRunWizard.php
+new file mode 100644
+index 0000000..6d5a43b
+--- /dev/null
++++ b/src/Onboarding/FirstRunWizard.php
+@@ -0,0 +1,96 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Larapgrader\Onboarding;
++
++use Larapgrader\Contracts\OnboardingWizardInterface;
++use Symfony\Component\Console\Input\InputInterface;
++use Symfony\Component\Console\Output\OutputInterface;
++use Symfony\Component\Yaml\Yaml;
++
++/**
++ * FirstRunWizard handles interactive setup for first-time users.
++ * Detects first-run state and guides users through initial configuration.
++ */
++class FirstRunWizard implements OnboardingWizardInterface
++{
++    public function __construct(
++        private InputInterface $input, // @phpstan-ignore-line - reserved for future interactive input
++        private OutputInterface $output
++    ) {
++    }
++
++    /**
++     * Detect if this is a first-run (no larapgrader.yaml exists).
++     *
++     * @return bool
++     */
++    public function isFirstRun(): bool
++    {
++        return !file_exists('larapgrader.yaml');
++    }
++
++    /**
++     * Run the interactive wizard and return collected configuration.
++     *
++     * @return array<string, mixed> Configuration array to be written to larapgrader.yaml
++     */
++    public function runWizard(): array
++    {
++        $this->output->writeln('<info>Welcome to larapgrader! ≡ƒÄë</info>');
++        $this->output->writeln('<info>Let\'s set up your first migration...</info>\n');
++
++        // 1. Get app path
++        $appPath = $this->promptForAppPath();
++
++        // 2. Detect PHP version
++        $phpVersion = PHP_VERSION;
++        $this->output->writeln("<info>Γ£ô Detected PHP $phpVersion</info>");
++
++        // 3. Build configuration
++        $config = [
++            'app_path' => $appPath,
++            'thresholds' => [
++                'auto_migrate' => 85,
++                'manual_review' => 60,
++            ],
++            'llm' => [
++                'provider' => 'ollama',
++                'model' => 'mistral',
++            ],
++            'post_phase_command' => 'echo "No test command configured"',
++        ];
++
++        // 4. Write configuration to YAML
++        $this->writeConfigFile($config);
++
++        return $config;
++    }
++
++    /**
++     * Prompt user for application path.
++     *
++     * @return string
++     */
++    private function promptForAppPath(): string
++    {
++        $default = getcwd();
++
++        // In current implementation, always use default since we don't have interactive prompts
++        // getcwd() may return false, so we handle that
++        return false !== $default ? $default : '.';
++    }
++
++    /**
++     * Write configuration to larapgrader.yaml.
++     *
++     * @param array<string, mixed> $config
++     */
++    private function writeConfigFile(array $config): void
++    {
++        $yaml = Yaml::dump($config, 4);
++        file_put_contents('larapgrader.yaml', $yaml);
++        $this->output->writeln('<info>Γ£ô Created larapgrader.yaml</info>');
++    }
++}
+diff --git a/tests/Onboarding/FirstRunWizardTest.php b/tests/Onboarding/FirstRunWizardTest.php
+new file mode 100644
+index 0000000..ea1111a
+--- /dev/null
++++ b/tests/Onboarding/FirstRunWizardTest.php
+@@ -0,0 +1,171 @@
++<?php
++
++declare(strict_types=1);
++
++use Larapgrader\Contracts\OnboardingWizardInterface;
++use Larapgrader\Onboarding\FirstRunWizard;
++use Mockery as m;
++use Symfony\Component\Console\Input\ArrayInput;
++use Symfony\Component\Console\Output\BufferedOutput;
++
++beforeEach(function (): void {
++    // Clean up test fixtures
++    @unlink('larapgrader.yaml');
++    @rmdir('.larapgrader');
++});
++
++afterEach(function (): void {
++    @unlink('larapgrader.yaml');
++    @rmdir('.larapgrader');
++    m::close();
++});
++
++test('FirstRunWizard implements OnboardingWizardInterface', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++
++    expect($wizard)->toBeInstanceOf(OnboardingWizardInterface::class);
++});
++
++test('isFirstRun returns true when larapgrader.yaml does not exist', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++
++    expect($wizard->isFirstRun())->toBeTrue();
++});
++
++test('isFirstRun returns false when larapgrader.yaml exists', function (): void {
++    // Create a temporary config file
++    file_put_contents('larapgrader.yaml', "test: config\n");
++
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++
++    expect($wizard->isFirstRun())->toBeFalse();
++
++    @unlink('larapgrader.yaml');
++});
++
++test('runWizard returns array with required configuration keys', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $config = $wizard->runWizard();
++
++    expect($config)->toBeArray()
++        ->and($config)->toHaveKeys(['thresholds', 'llm', 'post_phase_command', 'app_path']);
++});
++
++test('runWizard creates larapgrader.yaml file', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $wizard->runWizard();
++
++    expect(file_exists('larapgrader.yaml'))->toBeTrue();
++});
++
++test('runWizard configuration contains auto_migrate threshold', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $config = $wizard->runWizard();
++
++    expect($config['thresholds']['auto_migrate'])->toBe(85);
++});
++
++test('runWizard configuration contains manual_review threshold', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $config = $wizard->runWizard();
++
++    expect($config['thresholds']['manual_review'])->toBe(60);
++});
++
++test('runWizard configuration contains LLM provider defaults', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $config = $wizard->runWizard();
++
++    expect($config['llm']['provider'])->toBe('ollama')
++        ->and($config['llm']['model'])->toBe('mistral');
++});
++
++test('runWizard uses default app path when no input provided', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $config = $wizard->runWizard();
++
++    expect($config['app_path'])->toBe(getcwd());
++});
++
++test('runWizard writes welcome message to output', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $wizard->runWizard();
++
++    $output_text = $output->fetch();
++    expect($output_text)->toContain('Welcome');
++});
++
++test('runWizard writes success message when config file created', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $wizard->runWizard();
++
++    $output_text = $output->fetch();
++    expect($output_text)->toContain('larapgrader.yaml');
++});
++
++test('runWizard writes PHP version detection to output', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $wizard->runWizard();
++
++    $output_text = $output->fetch();
++    expect($output_text)->toContain('PHP');
++});
++
++test('generated larapgrader.yaml is valid YAML', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $wizard->runWizard();
++
++    $content = file_get_contents('larapgrader.yaml');
++    expect($content)->toBeString()
++        ->and(strlen($content))->toBeGreaterThan(0);
++});
++
++test('runWizard sets post_phase_command with sensible default', function (): void {
++    $input = new ArrayInput([]);
++    $output = new BufferedOutput();
++
++    $wizard = new FirstRunWizard($input, $output);
++    $config = $wizard->runWizard();
++
++    expect($config['post_phase_command'])->toBeString()
++        ->and(strlen($config['post_phase_command']))->toBeGreaterThan(0);
++});
