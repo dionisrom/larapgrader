@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Larapgrader\Container;
 
+use DI;
 use DI\Container as DIContainer;
 use DI\ContainerBuilder;
 use InvalidArgumentException;
+use Larapgrader\AST\AstParser;
+use Larapgrader\AST\ParallelProcessor;
+use Larapgrader\Contracts\AstParserInterface;
 use Psr\Container\ContainerInterface;
 
 /**
@@ -27,7 +31,16 @@ class ServiceContainer implements ContainerInterface
      */
     public function __construct()
     {
-        $this->container = (new ContainerBuilder())
+        $builder = new ContainerBuilder();
+
+        $builder->addDefinitions([
+            AstParserInterface::class => DI\autowire(AstParser::class),
+            \PhpParser\Parser::class => static fn (): \PhpParser\Parser =>
+                (new \PhpParser\ParserFactory())->createForNewestSupportedVersion(),
+            ParallelProcessor::class => DI\autowire(ParallelProcessor::class),
+        ]);
+
+        $this->container = $builder
             ->useAutowiring(true)
             ->build();
     }
