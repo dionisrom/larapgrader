@@ -14,7 +14,6 @@ interface KnowledgeBaseInterface
      *
      * @param string $patternHash Hash identifying the pattern
      * @param array<mixed> $resolution The resolution data
-     * @return void
      */
     public function store(string $patternHash, array $resolution): void;
 

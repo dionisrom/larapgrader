@@ -76,9 +76,9 @@ class FirstRunWizard implements OnboardingWizardInterface
     private function promptForAppPath(): string
     {
         $default = getcwd();
-        
+
         // Normalize path to forward slashes for cross-platform compatibility
-        if ($default !== false) {
+        if (false !== $default) {
             $default = str_replace('\\', '/', $default);
         } else {
             $default = '.';

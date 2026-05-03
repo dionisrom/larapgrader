@@ -10,7 +10,7 @@
 
 | Epic | Status | Stories Complete | Stories In-Progress | Stories Ready |
 |---|---|---|---|---|
-| **Epic 1** | in-progress | 7 | 0 | 1 |
+| **Epic 1** | **done** | 8 | 0 | 0 |
 | **Epic 2** | ready-for-dev | 0 | 0 | 8 |
 | **Epic 3** | ready-for-dev | 0 | 0 | 6 |
 | **Epic 4** | ready-for-dev | 0 | 0 | 7 |
@@ -35,8 +35,8 @@
 | Configure PHPStan | 1.4 | **done** | 6/6 | 6 |
 | Implement Ollama CLI | 1.5 | **done** | 8/8 | 8 |
 | Create Onboarding Wizard | 1.6 | **done** | 3/3 | 3 |
-| Generate README.md | 1.7 | ready-for-dev | 0/3 | 3 |
-| Add CI Static Analysis | 1.8 | ready-for-dev | 0/3 | 3 |
+| Generate README.md | 1.7 | done | 6/6 | 6 |
+| Add CI Static Analysis | 1.8 | **done** | 3/3 | 3 |
 
 ### Epic 2: Pre-Migration Intelligence ✅ MVP
 

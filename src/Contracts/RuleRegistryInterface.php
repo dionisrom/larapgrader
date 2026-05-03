@@ -14,7 +14,6 @@ interface RuleRegistryInterface
      *
      * @param string $ruleName Unique rule identifier
      * @param callable $ruleImplementation The rule logic
-     * @return void
      */
     public function register(string $ruleName, callable $ruleImplementation): void;
 

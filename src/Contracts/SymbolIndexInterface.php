@@ -14,7 +14,6 @@ interface SymbolIndexInterface
      *
      * @param array<mixed> $ast The AST representation
      * @param string $filePath The file being indexed
-     * @return void
      */
     public function index(array $ast, string $filePath): void;
 

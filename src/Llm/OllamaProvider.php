@@ -8,7 +8,7 @@ use Larapgrader\Contracts\OllamaProviderInterface;
 
 /**
  * Concrete implementation of OllamaProviderInterface.
- * 
+ *
  * @stub For MVP — to be fully implemented in future stories
  */
 class OllamaProvider implements OllamaProviderInterface

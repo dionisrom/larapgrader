@@ -8,12 +8,13 @@ use Larapgrader\Contracts\ContractParserInterface;
 
 /**
  * Concrete implementation of ContractParserInterface.
- * 
+ *
  * @stub For MVP — to be fully implemented in future stories
  */
 class ContractParser implements ContractParserInterface
 {
     /**
+     * @param string $filePath
      * @return array<mixed>
      */
     public function parse(string $filePath): array

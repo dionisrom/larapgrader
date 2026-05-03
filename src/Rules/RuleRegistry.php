@@ -8,7 +8,7 @@ use Larapgrader\Contracts\RuleRegistryInterface;
 
 /**
  * Concrete implementation of RuleRegistryInterface.
- * 
+ *
  * @stub For MVP — to be fully implemented in future stories
  */
 class RuleRegistry implements RuleRegistryInterface

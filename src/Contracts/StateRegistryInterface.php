@@ -22,7 +22,6 @@ interface StateRegistryInterface
      *
      * @param string $key The state key
      * @param mixed $value The value to store
-     * @return void
      */
     public function set(string $key, mixed $value): void;
 
@@ -30,7 +29,6 @@ interface StateRegistryInterface
      * Delete a value from the state registry.
      *
      * @param string $key The state key
-     * @return void
      */
     public function delete(string $key): void;
 }

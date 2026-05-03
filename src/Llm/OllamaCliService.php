@@ -10,6 +10,7 @@ use Larapgrader\Contracts\ProcessFactoryInterface;
 use Larapgrader\Exceptions\LLMServiceUnavailableException;
 use Larapgrader\Exceptions\PromptTooLongException;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Throwable;
 
 /**
  * Low-level Ollama CLI execution wrapper.
@@ -25,10 +26,14 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
  */
 class OllamaCliService implements OllamaCliInterface
 {
-    /** Maximum prompt length in bytes (NFR6) */
+    /**
+     * Maximum prompt length in bytes (NFR6)
+     */
     private const MAX_PROMPT_LENGTH = 50000;
 
-    /** Default model name */
+    /**
+     * Default model name
+     */
     private const DEFAULT_MODEL = 'mistral';
 
     public function __construct(
@@ -46,10 +51,9 @@ class OllamaCliService implements OllamaCliInterface
      * @param string $prompt The prompt to send to the LLM
      * @param string $model The model to use (default: 'mistral')
      *
-     * @return string The full response from ollama CLI
-     *
      * @throws PromptTooLongException If prompt exceeds 50KB
      * @throws LLMServiceUnavailableException If ollama process fails
+     * @return string The full response from ollama CLI
      */
     public function generate(string $prompt, string $model = self::DEFAULT_MODEL): string
     {
@@ -62,7 +66,7 @@ class OllamaCliService implements OllamaCliInterface
         // Uses hybrid approach: if audit fails, log locally and continue (maintains AC3 guarantee)
         try {
             $this->logPromptToAudit($prompt, $model);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Audit failure: log locally, create minimal fallback record, continue
             // This preserves LLM availability while maintaining audit best-effort
             error_log(sprintf(
@@ -105,9 +109,7 @@ class OllamaCliService implements OllamaCliInterface
      * @param string $prompt The prompt being sent
      * @param string $model The model being used
      *
-     * @return void
-     *
-     * @throws \Throwable If audit trail recording fails (caught by caller)
+     * @throws Throwable If audit trail recording fails (caught by caller)
      */
     private function logPromptToAudit(string $prompt, string $model): void
     {
@@ -128,8 +130,6 @@ class OllamaCliService implements OllamaCliInterface
      * Records failure details for compliance tracking and debugging.
      *
      * @param \Symfony\Component\Process\Process $process The failed process
-     *
-     * @return void
      */
     private function logProcessFailure(\Symfony\Component\Process\Process $process): void
     {

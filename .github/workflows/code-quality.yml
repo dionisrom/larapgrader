@@ -1,0 +1,87 @@
+name: Code Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  phpstan:
+    name: PHPStan Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+          coverage: none
+
+      - name: Verify PHP Extensions
+        run: php -m | grep -q pdo_sqlite || (echo "PDO SQLite extension not installed"; exit 1)
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor/
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Verify Vendor Directory
+        run: test -d vendor || (echo "vendor/ not found"; exit 1)
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse src/
+
+  php-cs-fixer:
+    name: PHP Code Style Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+          coverage: none
+
+      - name: Verify PHP Extensions
+        run: php -m | grep -q pdo_sqlite || (echo "PDO SQLite extension not installed"; exit 1)
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor/
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Verify Vendor Directory
+        run: test -d vendor || (echo "vendor/ not found"; exit 1)
+
+      - name: Check PHP Code Style
+        run: vendor/bin/php-cs-fixer check --diff --config=.php-cs-fixer.php

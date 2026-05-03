@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Larapgrader\Container;
 
 use Psr\Container\NotFoundExceptionInterface;
+use RuntimeException;
 
-class ContainerNotFoundException extends \RuntimeException implements NotFoundExceptionInterface
+class ContainerNotFoundException extends RuntimeException implements NotFoundExceptionInterface
 {
     public function __construct(string $id)
     {

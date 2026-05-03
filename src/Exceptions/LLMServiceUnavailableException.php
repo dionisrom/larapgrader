@@ -6,6 +6,7 @@ namespace Larapgrader\Exceptions;
 
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use Throwable;
 
 /**
  * Exception thrown when Ollama LLM service is unavailable or fails.
@@ -22,7 +23,7 @@ class LLMServiceUnavailableException extends RuntimeException
     public function __construct(
         string $message = 'LLM service unavailable',
         int $code = 0,
-        ?\Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
     }

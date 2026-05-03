@@ -23,7 +23,6 @@ interface FileManagerInterface
      *
      * @param string $filePath Path to the file
      * @param string $contents Contents to write
-     * @return void
      */
     public function write(string $filePath, string $contents): void;
 }

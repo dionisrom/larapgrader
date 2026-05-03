@@ -7,26 +7,26 @@ use Larapgrader\Container\ServiceContainer;
 
 test('factory creates configured container', function () {
     $container = ContainerFactory::create();
-    
+
     expect($container)->toBeInstanceOf(ServiceContainer::class);
 });
 
 test('factory supports overrides with Mockery mocks', function () {
     $mockAstParser = \Mockery::mock(\Larapgrader\Contracts\AstParserInterface::class);
     $mockAstParser->shouldReceive('parseFile')->andReturn([]);
-    
+
     $container = ContainerFactory::create([
-        \Larapgrader\Contracts\AstParserInterface::class => $mockAstParser
+        \Larapgrader\Contracts\AstParserInterface::class => $mockAstParser,
     ]);
-    
+
     $resolved = $container->get(\Larapgrader\Contracts\AstParserInterface::class);
-    
+
     expect($resolved)->toBe($mockAstParser);
 });
 
 test('factory creates container with all interfaces wired', function () {
     $container = ContainerFactory::create();
-    
+
     // Verify all 12 interfaces can be resolved
     $interfaces = [
         \Larapgrader\Contracts\AstParserInterface::class,
@@ -42,11 +42,12 @@ test('factory creates container with all interfaces wired', function () {
         \Larapgrader\Contracts\FileManagerInterface::class,
         \Larapgrader\Contracts\OllamaProviderInterface::class,
     ];
-    
+
     foreach ($interfaces as $interface) {
         expect($container->has($interface))->toBeTrue();
 
         $thrown = null;
+
         try {
             $resolved = $container->get($interface);
             expect($resolved)->not->toBeNull();

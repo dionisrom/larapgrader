@@ -8,7 +8,7 @@ use Larapgrader\Contracts\ConfidenceScorerInterface;
 
 /**
  * Concrete implementation of ConfidenceScorerInterface.
- * 
+ *
  * @stub For MVP — to be fully implemented in future stories
  */
 class ConfidenceScorer implements ConfidenceScorerInterface

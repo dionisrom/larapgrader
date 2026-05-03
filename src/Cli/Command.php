@@ -10,7 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Concrete implementation of CliCommandInterface.
- * 
+ *
  * @stub For MVP — to be fully implemented in future stories
  */
 class Command implements CliCommandInterface

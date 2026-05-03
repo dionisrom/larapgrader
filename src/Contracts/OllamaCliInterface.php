@@ -23,10 +23,9 @@ interface OllamaCliInterface
      * @param string $prompt The prompt to send to the LLM
      * @param string $model The model to use (default: 'mistral')
      *
-     * @return string The full response from ollama CLI
-     *
      * @throws \Larapgrader\Exceptions\PromptTooLongException If prompt exceeds 50KB
      * @throws \Larapgrader\Exceptions\LLMServiceUnavailableException If ollama process fails
+     * @return string The full response from ollama CLI
      */
     public function generate(string $prompt, string $model = 'mistral'): string;
 }

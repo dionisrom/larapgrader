@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Larapgrader\Container;
 
-use Psr\Container\ContainerInterface;
 use DI\Container as DIContainer;
 use DI\ContainerBuilder;
+use InvalidArgumentException;
+use Psr\Container\ContainerInterface;
 
 /**
  * PSR-11 compliant service container using PHP-DI.
@@ -15,8 +16,10 @@ use DI\ContainerBuilder;
 class ServiceContainer implements ContainerInterface
 {
     private DIContainer $container;
-    
-    /** @var array<string, mixed> */
+
+    /**
+     * @var array<string, mixed>
+     */
     private array $bindings = [];
 
     /**
@@ -33,12 +36,12 @@ class ServiceContainer implements ContainerInterface
      * Get a service from the container.
      *
      * @param string $id The service identifier (usually FQCN)
-     * @return mixed The service instance
      * @throws \Psr\Container\NotFoundExceptionInterface If service not found
+     * @return mixed The service instance
      */
     public function get(string $id): mixed
     {
-        if ($id === '') {
+        if ('' === $id) {
             throw new ContainerNotFoundException($id);
         }
 
@@ -68,7 +71,7 @@ class ServiceContainer implements ContainerInterface
      */
     public function has(string $id): bool
     {
-        if ($id === '') {
+        if ('' === $id) {
             return false;
         }
 
@@ -80,12 +83,11 @@ class ServiceContainer implements ContainerInterface
      *
      * @param string $id The service identifier
      * @param mixed $value The service instance or factory
-     * @return void
      */
     public function set(string $id, mixed $value): void
     {
-        if ($id === '') {
-            throw new \InvalidArgumentException('Service id must be a non-empty string.');
+        if ('' === $id) {
+            throw new InvalidArgumentException('Service id must be a non-empty string.');
         }
 
         $this->bindings[$id] = $value;

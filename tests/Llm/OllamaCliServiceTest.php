@@ -1,13 +1,10 @@
 <?php
 
 use Larapgrader\Contracts\AuditTrailInterface;
-use Larapgrader\Contracts\OllamaCliInterface;
 use Larapgrader\Contracts\ProcessFactoryInterface;
 use Larapgrader\Exceptions\LLMServiceUnavailableException;
 use Larapgrader\Exceptions\PromptTooLongException;
 use Larapgrader\LLM\OllamaCliService;
-use Mockery\MockInterface;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 /**
@@ -137,6 +134,7 @@ test('AC3: generate() logs prompt to audit trail BEFORE process.run()', function
         ->once()
         ->andReturnUsing(function () use (&$callOrder) {
             $callOrder[] = 'process.run';
+
             return 0;
         });
     $mockProcess->shouldReceive('isSuccessful')->andReturn(true);
@@ -274,6 +272,7 @@ test('AC4: exception includes error details', function () {
     $service = new OllamaCliService($mockFactory, $mockAuditTrail);
 
     $exceptionThrown = false;
+
     try {
         $service->generate('test');
     } catch (LLMServiceUnavailableException $e) {
@@ -379,7 +378,7 @@ test('AC6: never executes real ollama process in tests', function () {
 test('Integration: typical successful ollama call flow', function () {
     $prompt = 'What does this code do?';
     $model = 'mistral';
-    $response = "This code validates user input and returns a boolean result.";
+    $response = 'This code validates user input and returns a boolean result.';
 
     $mockProcess = Mockery::mock(Process::class);
     $mockProcess->shouldReceive('run')->once();
@@ -422,6 +421,7 @@ test('Integration: error handling flow preserves context', function () {
     $service = new OllamaCliService($mockFactory, $mockAuditTrail);
 
     $exceptionThrown = false;
+
     try {
         $service->generate('test');
     } catch (LLMServiceUnavailableException $e) {

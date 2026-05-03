@@ -14,7 +14,6 @@ interface AuditTrailInterface
      *
      * @param string $action The action performed
      * @param array<mixed> $context Additional context data
-     * @return void
      */
     public function record(string $action, array $context): void;
 

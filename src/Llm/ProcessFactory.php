@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Larapgrader\LLM;
 
+use InvalidArgumentException;
 use Larapgrader\Contracts\ProcessFactoryInterface;
 use Symfony\Component\Process\Process;
 
@@ -23,15 +24,14 @@ class ProcessFactory implements ProcessFactoryInterface
      * @param array<string> $command Command and arguments (not a shell string)
      * @param int $timeout Timeout in seconds (default: 30 for Mistral LLM)
      *
+     * @throws InvalidArgumentException If timeout is not positive
      * @return Process Configured process instance ready to run
-     *
-     * @throws \InvalidArgumentException If timeout is not positive
      */
     public function create(array $command, int $timeout = 30): Process
     {
         // Validate timeout is positive
         if ($timeout <= 0) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 sprintf('Timeout must be positive (got %d seconds)', $timeout)
             );
         }

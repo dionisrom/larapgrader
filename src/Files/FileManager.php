@@ -8,7 +8,7 @@ use Larapgrader\Contracts\FileManagerInterface;
 
 /**
  * Concrete implementation of FileManagerInterface.
- * 
+ *
  * @stub For MVP — to be fully implemented in future stories
  */
 class FileManager implements FileManagerInterface
