@@ -26,7 +26,7 @@ class ContainerFactory
         // Default interface-to-implementation map (placeholder implementations for now).
         $definitions = [
             \Larapgrader\Contracts\AstParserInterface::class => \Larapgrader\AST\AstParser::class,
-            \Larapgrader\Contracts\SymbolIndexInterface::class => \Larapgrader\AST\SymbolIndex::class,
+            \Larapgrader\Contracts\SymbolIndexInterface::class => \Larapgrader\Services\SymbolIndexService::class,
             \Larapgrader\Contracts\ConfidenceScorerInterface::class => \Larapgrader\Confidence\ConfidenceScorer::class,
             \Larapgrader\Contracts\BlastRadiusCalculatorInterface::class => \Larapgrader\Analysis\BlastRadiusCalculator::class,
             \Larapgrader\Contracts\ContractParserInterface::class => \Larapgrader\Contract\ContractParser::class,

@@ -4,29 +4,13 @@ declare(strict_types=1);
 
 namespace Larapgrader\AST;
 
-use Larapgrader\Contracts\SymbolIndexInterface;
+use Larapgrader\Services\SymbolIndexService;
 
 /**
- * Concrete implementation of SymbolIndexInterface.
+ * Backward-compatible alias for SymbolIndexService.
  *
- * @stub For MVP — to be fully implemented in future stories
+ * @deprecated Prefer Larapgrader\Services\SymbolIndexService.
  */
-class SymbolIndex implements SymbolIndexInterface
+class SymbolIndex extends SymbolIndexService
 {
-    /**
-     * @param array<mixed> $ast
-     * @param string $filePath
-     */
-    public function index(array $ast, string $filePath): void
-    {
-    }
-
-    /**
-     * @param string $query
-     * @return array<mixed>
-     */
-    public function search(string $query): array
-    {
-        return [];
-    }
 }
