@@ -11,7 +11,7 @@
 | Epic | Status | Stories Complete | Stories In-Progress | Stories Ready |
 |---|---|---|---|---|
 | **Epic 1** | **done** | 8 | 0 | 0 |
-| **Epic 2** | in-progress | 2 | 0 | 5 |
+| **Epic 2** | in-progress | 4 | 0 | 3 |
 | **Epic 3** | ready-for-dev | 0 | 0 | 6 |
 | **Epic 4** | ready-for-dev | 0 | 0 | 7 |
 | **Epic 5** | ready-for-dev | 0 | 0 | 5 |
@@ -43,8 +43,8 @@
 | Story | Key | Status | Tasks Complete | Tasks Total |
 |---|---|---|---|---|
 | Build AST Parser | 2.1 | done | 3/3 | 3 |
-| Create Symbol Index | 2.2 | done | 3/3 | 3 |
-| Implement Confidence Scorer | 2.3 | ready-for-dev | 0/3 | 3 |
+| Create Symbol Index | 2.2 | done | 7/7 | 7 |
+| Implement Confidence Scorer | 2.3 | done | 6/6 | 6 |
 | Build Blast Radius Calculator | 2.4 | ready-for-dev | 0/3 | 3 |
 | Detect Incompatible Packages | 2.5 | ready-for-dev | 0/3 | 3 |
 | Generate Time Estimates | 2.6 | ready-for-dev | 0/3 | 3 |
@@ -152,7 +152,7 @@
 
 
 **Status Breakdown:**
-- **completed:** 2 stories (2.1, 2.2)
+- **done:** 3 stories (2.1, 2.2, 2.3)
 - **in-progress:** 0 stories
 - **ready-for-dev:** 58 stories
 - **review:** 0 stories

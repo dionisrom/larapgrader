@@ -120,7 +120,15 @@ class SymbolIndexService implements SymbolIndexInterface
             return null;
         }
 
-        return $this->symbols[$candidate['type']][$candidate['key']] ?? null;
+        $type = $candidate['type'];
+        $key = $candidate['key'];
+        
+        // Verify symbol actually exists in its bucket (defensive against nameIndex sync issues)
+        if (isset($this->symbols[$type][$key])) {
+            return $this->symbols[$type][$key];
+        }
+        
+        return null;
     }
 
     /**
@@ -196,13 +204,33 @@ class SymbolIndexService implements SymbolIndexInterface
             throw new RuntimeException('Failed to decode symbol index JSON.', 0, $exception);
         }
 
-        if (!is_array($decoded) || !isset($decoded['symbols']) || !is_array($decoded['symbols'])) {
+        if (!is_array($decoded)) {
+            throw new RuntimeException('Invalid symbol index JSON format: root must be an object.');
+        }
+
+        // Validate version (for future schema migration)
+        $version = isset($decoded['version']) ? (int) $decoded['version'] : 0;
+        if (1 !== $version) {
+            throw new RuntimeException(sprintf('Unsupported symbol index version: %d (expected 1)', $version));
+        }
+
+        if (!isset($decoded['symbols']) || !is_array($decoded['symbols'])) {
             throw new RuntimeException('Invalid symbol index JSON format: missing symbols.');
         }
 
         /** @var array<string, array<string, array<string, mixed>>> $symbols */
         $symbols = $decoded['symbols'];
-        $this->symbols = array_replace($this->emptySymbolBuckets(), $symbols);
+        $loadedSymbols = array_replace($this->emptySymbolBuckets(), $symbols);
+        
+        // Validate that all loaded symbols have 'key' field for getReferences()
+        foreach ($loadedSymbols as $type => $bucket) {
+            foreach ($bucket as $key => $symbol) {
+                if (!isset($symbol['key'])) {
+                    $loadedSymbols[$type][$key]['key'] = $key;
+                }
+            }
+        }
+        $this->symbols = $loadedSymbols;
 
         if (isset($decoded['references']) && is_array($decoded['references'])) {
             /** @var array<string, list<array<string, mixed>>> $references */
@@ -260,7 +288,11 @@ class SymbolIndexService implements SymbolIndexInterface
         }
 
         $files = [];
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source));
+        try {
+            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS | RecursiveDirectoryIterator::FOLLOW_SYMLINKS));
+        } catch (\UnexpectedValueException $exception) {
+            throw new RuntimeException(sprintf('Failed to iterate directory %s: %s', $source, $exception->getMessage()), 0, $exception);
+        }
 
         foreach ($iterator as $entry) {
             if (!$entry instanceof SplFileInfo || !$entry->isFile()) {
@@ -280,13 +312,24 @@ class SymbolIndexService implements SymbolIndexInterface
 
     protected function indexPhpFile(string $filePath): void
     {
+        if (!is_readable($filePath)) {
+            throw new RuntimeException(sprintf('File is not readable: %s', $filePath));
+        }
+
         $content = file_get_contents($filePath);
         if (false === $content) {
             throw new RuntimeException(sprintf('Failed to read file: %s', $filePath));
         }
 
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
-        $nodes = $parser->parse($content) ?? [];
+        try {
+            $nodes = $parser->parse($content);
+            if (null === $nodes) {
+                throw new RuntimeException(sprintf('Parser returned no nodes for file: %s', $filePath));
+            }
+        } catch (\PhpParser\Error $exception) {
+            throw new RuntimeException(sprintf('Parse error in file %s: %s', $filePath, $exception->getMessage()), 0, $exception);
+        }
 
         $this->indexPhpNodes($nodes, $filePath, '');
     }
@@ -426,6 +469,9 @@ class SymbolIndexService implements SymbolIndexInterface
             }
 
             if ($node instanceof Function_) {
+                if (!$node->name instanceof Identifier) {
+                    continue;
+                }
                 $functionName = $node->name->toString();
                 $functionKey = $this->qualify($namespace, $functionName);
                 $this->addSymbol('function', $functionKey, [
@@ -442,6 +488,9 @@ class SymbolIndexService implements SymbolIndexInterface
 
             if ($node instanceof Const_) {
                 foreach ($node->consts as $constNode) {
+                    if (!$constNode->name instanceof Identifier) {
+                        continue;
+                    }
                     $constName = $constNode->name->toString();
                     $constKey = $this->qualify($namespace, $constName);
                     $this->addSymbol('constant', $constKey, [
@@ -504,6 +553,9 @@ class SymbolIndexService implements SymbolIndexInterface
 
         foreach ($node->stmts as $stmt) {
             if ($stmt instanceof ClassMethod) {
+                if (!$stmt->name instanceof Identifier) {
+                    continue;
+                }
                 $methodName = $stmt->name->toString();
                 $methodKey = $classKey . '::' . $methodName;
                 $this->addSymbol('method', $methodKey, [
@@ -650,8 +702,18 @@ class SymbolIndexService implements SymbolIndexInterface
      */
     protected function addSymbol(string $type, string $key, array $metadata): void
     {
+        $allowedTypes = array_keys($this->emptySymbolBuckets());
+        if (!in_array($type, $allowedTypes, true)) {
+            throw new InvalidArgumentException(sprintf('Invalid symbol type "%s". Allowed types: %s', $type, implode(', ', $allowedTypes)));
+        }
+
         if (!isset($this->symbols[$type])) {
             $this->symbols[$type] = [];
+        }
+
+        if (isset($this->symbols[$type][$key])) {
+            // Log symbol redefinition (warning level)
+            error_log(sprintf('Symbol redefined: %s:%s previously found, now overwriting', $type, $key));
         }
 
         $this->symbols[$type][$key] = $metadata;
@@ -670,13 +732,22 @@ class SymbolIndexService implements SymbolIndexInterface
             $this->references[$symbolKey] = [];
         }
 
+        // Deduplicate: check if identical reference already exists
+        foreach ($this->references[$symbolKey] as $existing) {
+            if ($existing === $reference) {
+                return; // Already exists, skip
+            }
+        }
+
         $this->references[$symbolKey][] = $reference;
     }
 
     protected function indexName(string $name, string $type, string $key): void
     {
+        $name = trim($name);
         $normalized = strtolower($name);
         if ('' === $normalized) {
+            // Empty names are skipped: qualified keys should never be empty
             return;
         }
 
@@ -708,9 +779,15 @@ class SymbolIndexService implements SymbolIndexInterface
 
     protected function qualify(string $namespace, string $name): string
     {
+        $name = trim($name);
         $name = ltrim($name, '\\');
-        if ('' === trim($namespace)) {
+        $namespace = trim($namespace);
+        
+        if ('' === $namespace) {
             return $name;
+        }
+        if ('' === $name) {
+            return $namespace;
         }
 
         return trim($namespace, '\\') . '\\' . $name;
@@ -792,69 +869,85 @@ class SymbolIndexService implements SymbolIndexInterface
 
     protected function persistSqlite(string $outputPath): void
     {
-        $pdo = new PDO('sqlite:' . $outputPath);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        try {
+            $pdo = new PDO('sqlite:' . $outputPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $pdo->exec('CREATE TABLE IF NOT EXISTS symbol_index (type TEXT NOT NULL, key_name TEXT NOT NULL, data_json TEXT NOT NULL, PRIMARY KEY(type, key_name))');
-        $pdo->exec('CREATE TABLE IF NOT EXISTS symbol_references (symbol_key TEXT NOT NULL PRIMARY KEY, data_json TEXT NOT NULL)');
-        $pdo->exec('DELETE FROM symbol_index');
-        $pdo->exec('DELETE FROM symbol_references');
+            // Start transaction for data safety
+            $pdo->beginTransaction();
 
-        $symbolStatement = $pdo->prepare('INSERT INTO symbol_index(type, key_name, data_json) VALUES (:type, :key_name, :data_json)');
-        $referenceStatement = $pdo->prepare('INSERT INTO symbol_references(symbol_key, data_json) VALUES (:symbol_key, :data_json)');
+            $pdo->exec('CREATE TABLE IF NOT EXISTS symbol_index (type TEXT NOT NULL, key_name TEXT NOT NULL, data_json TEXT NOT NULL, PRIMARY KEY(type, key_name))');
+            $pdo->exec('CREATE TABLE IF NOT EXISTS symbol_references (symbol_key TEXT NOT NULL PRIMARY KEY, data_json TEXT NOT NULL)');
+            $pdo->exec('DELETE FROM symbol_index');
+            $pdo->exec('DELETE FROM symbol_references');
 
-        foreach ($this->symbols as $type => $bucket) {
-            foreach ($bucket as $key => $metadata) {
-                $symbolStatement->execute([
-                    ':type' => $type,
-                    ':key_name' => $key,
-                    ':data_json' => json_encode($metadata, JSON_THROW_ON_ERROR),
+            $symbolStatement = $pdo->prepare('INSERT INTO symbol_index(type, key_name, data_json) VALUES (:type, :key_name, :data_json)');
+            $referenceStatement = $pdo->prepare('INSERT INTO symbol_references(symbol_key, data_json) VALUES (:symbol_key, :data_json)');
+
+            foreach ($this->symbols as $type => $bucket) {
+                foreach ($bucket as $key => $metadata) {
+                    $symbolStatement->execute([
+                        ':type' => $type,
+                        ':key_name' => $key,
+                        ':data_json' => json_encode($metadata, JSON_THROW_ON_ERROR),
+                    ]);
+                }
+            }
+
+            foreach ($this->references as $symbolKey => $refs) {
+                $referenceStatement->execute([
+                    ':symbol_key' => $symbolKey,
+                    ':data_json' => json_encode($refs, JSON_THROW_ON_ERROR),
                 ]);
             }
-        }
 
-        foreach ($this->references as $symbolKey => $refs) {
-            $referenceStatement->execute([
-                ':symbol_key' => $symbolKey,
-                ':data_json' => json_encode($refs, JSON_THROW_ON_ERROR),
-            ]);
+            $pdo->commit();
+        } catch (\Exception $exception) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw new RuntimeException(sprintf('Failed to persist to SQLite database %s: %s', $outputPath, $exception->getMessage()), 0, $exception);
         }
     }
 
     protected function loadSqlite(string $inputPath): void
     {
-        $pdo = new PDO('sqlite:' . $inputPath);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        try {
+            $pdo = new PDO('sqlite:' . $inputPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $symbolsQuery = $pdo->query('SELECT type, key_name, data_json FROM symbol_index');
-        if (false !== $symbolsQuery) {
-            while (false !== ($row = $symbolsQuery->fetch(PDO::FETCH_ASSOC))) {
-                $type = (string) $row['type'];
-                $key = (string) $row['key_name'];
+            $symbolsQuery = $pdo->query('SELECT type, key_name, data_json FROM symbol_index');
+            if (false !== $symbolsQuery) {
+                while (false !== ($row = $symbolsQuery->fetch(PDO::FETCH_ASSOC))) {
+                    $type = (string) $row['type'];
+                    $key = (string) $row['key_name'];
 
-                /** @var array<string, mixed> $decoded */
-                $decoded = json_decode((string) $row['data_json'], true, 512, JSON_THROW_ON_ERROR);
+                    /** @var array<string, mixed> $decoded */
+                    $decoded = json_decode((string) $row['data_json'], true, 512, JSON_THROW_ON_ERROR);
 
-                if (!isset($this->symbols[$type])) {
-                    $this->symbols[$type] = [];
+                    if (!isset($this->symbols[$type])) {
+                        $this->symbols[$type] = [];
+                    }
+
+                    $this->symbols[$type][$key] = $decoded;
                 }
-
-                $this->symbols[$type][$key] = $decoded;
             }
-        }
 
-        $refsQuery = $pdo->query('SELECT symbol_key, data_json FROM symbol_references');
-        if (false !== $refsQuery) {
-            while (false !== ($row = $refsQuery->fetch(PDO::FETCH_ASSOC))) {
-                $symbolKey = (string) $row['symbol_key'];
+            $refsQuery = $pdo->query('SELECT symbol_key, data_json FROM symbol_references');
+            if (false !== $refsQuery) {
+                while (false !== ($row = $refsQuery->fetch(PDO::FETCH_ASSOC))) {
+                    $symbolKey = (string) $row['symbol_key'];
 
-                /** @var list<array<string, mixed>> $decoded */
-                $decoded = json_decode((string) $row['data_json'], true, 512, JSON_THROW_ON_ERROR);
-                $this->references[$symbolKey] = $decoded;
+                    /** @var list<array<string, mixed>> $decoded */
+                    $decoded = json_decode((string) $row['data_json'], true, 512, JSON_THROW_ON_ERROR);
+                    $this->references[$symbolKey] = $decoded;
+                }
             }
-        }
 
-        $this->rebuildNameIndex();
+            $this->rebuildNameIndex();
+        } catch (\Exception $exception) {
+            throw new RuntimeException(sprintf('Failed to load SQLite database %s: %s', $inputPath, $exception->getMessage()), 0, $exception);
+        }
     }
 
     /**
