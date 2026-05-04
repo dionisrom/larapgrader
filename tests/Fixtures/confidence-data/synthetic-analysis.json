@@ -1,0 +1,62 @@
+{
+  "synthethic_test_ast": {
+    "file": "app/Http/Middleware/AuthMiddleware.php",
+    "namespace": "App\\Http\\Middleware",
+    "classes": [
+      {
+        "name": "AuthMiddleware",
+        "extends": "Middleware",
+        "implements": [],
+        "traits": [],
+        "methods": [
+          {
+            "name": "handle",
+            "visibility": "public",
+            "static": false,
+            "parameters": ["request", "next"],
+            "return_type": "Response"
+          }
+        ]
+      }
+    ]
+  },
+  "synthetic_symbol_index": {
+    "classes": {
+      "AuthMiddleware": {
+        "name": "AuthMiddleware",
+        "namespace": "App\\Http\\Middleware",
+        "file": "app/Http/Middleware/AuthMiddleware.php",
+        "line_no": 5
+      },
+      "CustomAuthService": {
+        "name": "CustomAuthService",
+        "namespace": "App\\Services",
+        "file": "app/Services/CustomAuthService.php",
+        "line_no": 8
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "name": "simple_middleware_transformation",
+      "description": "Simple middleware with no custom dependencies",
+      "ast_complexity_expected": 30,
+      "cross_deps_expected": 1,
+      "custom_proximity_expected": 100
+    },
+    {
+      "name": "complex_middleware_with_dependencies",
+      "description": "Middleware with 4 affected files",
+      "ast_complexity_expected": 65,
+      "cross_deps_expected": 60,
+      "custom_proximity_expected": 40
+    },
+    {
+      "name": "middleware_near_custom_code",
+      "description": "Middleware 2 hops from custom AuthService",
+      "ast_complexity_expected": 50,
+      "cross_deps_expected": 70,
+      "custom_proximity_expected": 30
+    }
+  ]
+}
